@@ -1,0 +1,51 @@
+name: RAG Ingestion Pipeline
+
+on:
+  schedule:
+    # 03:45 UTC is 9:15 AM IST (Indian Standard Time)
+    - cron: '45 03 * * *'
+  # Allow manual triggering via GitHub UI
+  workflow_dispatch:
+
+jobs:
+  scrape_and_ingest:
+    name: Scraping Service
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          python -m playwright install --with-deps chromium
+          
+      - name: Run Phase 1 Scraper
+        working-directory: ./src/pipeline/phase1_scraping
+        run: |
+          python scraper.py
+          
+      - name: Run Phase 2 Normalize
+        working-directory: ./src/pipeline/phase2_normalize
+        run: |
+          python normalize.py
+          
+      - name: Run Phase 3 Chunking & Embed
+        working-directory: ./src/pipeline/phase3_chunking
+        run: |
+          python chunk_and_embed.py
+
+      - name: Run Phase 4 Indexing (Pinecone)
+        working-directory: ./src/pipeline/phase4_indexing
+        env:
+          PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
+        run: |
+          python index_data.py

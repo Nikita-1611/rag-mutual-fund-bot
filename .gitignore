@@ -1,0 +1,18 @@
+# Ignore environments and secrets
+.env
+venv/
+.venv/
+env/
+
+# Ignore Python caches
+__pycache__/
+*.pyc
+*.pyo
+
+# Ignore data outputs, vector DB chunks, and Playwright traces
+output/
+hashes.json
+
+# IDEs
+.vscode/
+.idea/
