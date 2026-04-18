@@ -10,7 +10,7 @@ on:
 jobs:
   scrape_and_ingest:
     name: Scraping Service
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     
     env:
       # OPT-IN to Node.js 24 as requested to resolve deprecation warnings
