@@ -28,24 +28,14 @@ jobs:
           pip install -r requirements.txt
           python -m playwright install --with-deps chromium
           
-      - name: Run Phase 1 Scraper
-        working-directory: ./src/pipeline/phase1_scraping
-        run: |
-          python scraper.py
-          
-      - name: Run Phase 2 Normalize
-        working-directory: ./src/pipeline/phase2_normalize
-        run: |
-          python normalize.py
-          
-      - name: Run Phase 3 Chunking & Embed
-        working-directory: ./src/pipeline/phase3_chunking
-        run: |
-          python chunk_and_embed.py
-
-      - name: Run Phase 4 Indexing (Pinecone)
-        working-directory: ./src/pipeline/phase4_indexing
+      - name: Run Master Ingestion Scheduler
         env:
+          # Inject all required secrets into the process environment
           PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          COHERE_API_KEY: ${{ secrets.COHERE_API_KEY }}
+          # Ensure Python finds the 'src' directory package
+          PYTHONPATH: ${{ github.workspace }}/src
         run: |
-          python index_data.py
+          # The Master Scheduler handles Cleanup -> Scrape -> Normalize -> Chunk -> Index
+          python src/scheduler_local.py
