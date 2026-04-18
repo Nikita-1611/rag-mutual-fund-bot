@@ -72,6 +72,7 @@ def run_indexing():
         index.upsert(vectors=batch)
 
     logger.info(f"Phase 4 Complete. All {total_chunks} chunks pushed to Pinecone.")
+    return {"indexed_count": total_chunks}
 
 if __name__ == "__main__":
     logger.info("Starting Phase 4 Indexing Job (Pinecone)...")

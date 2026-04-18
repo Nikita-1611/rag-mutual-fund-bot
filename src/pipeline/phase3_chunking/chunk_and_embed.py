@@ -136,14 +136,15 @@ def run_chunking_and_embedding():
     
     # Send all chunks to embedder
     if all_vector_payloads:
-        vectorized_payloads = embed_chunks(all_vector_payloads)
+        all_payloads = embed_chunks(all_vector_payloads)
         
-        # Save to finalized chunk JSON array
-        output_file = os.path.join(OUTPUT_DIR, "vector_payloads.json")
-        with open(output_file, 'w', encoding='utf-8') as f:
-            json.dump(vectorized_payloads, f, indent=4, ensure_ascii=False)
+        # Save Payload
+        os.makedirs(os.path.dirname(OUTPUT_FILE), exist_ok=True)
+        with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
+            json.dump(all_payloads, f, indent=4, ensure_ascii=False)
             
-        logger.info(f"Saved {len(vectorized_payloads)} vectorized payloads to {output_file}. Vector dimension check: {len(vectorized_payloads[0]['embedding'])}")
+        logger.info(f"Phase 3 Complete. Generated {len(all_payloads)} total chunks with embeddings.")
+        return {"chunk_count": len(all_payloads)}
     else:
         logger.info("No chunks were generated.")
 

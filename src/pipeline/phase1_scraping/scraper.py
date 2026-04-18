@@ -71,6 +71,9 @@ def run_scraper():
         context = browser.new_context(user_agent=user_agent)
         page = context.new_page()
         
+        success_count = 0
+        failure_count = 0
+        
         for url in TARGET_URLS:
             try:
                 # 1. Fetch via Playwright
@@ -112,14 +115,17 @@ def run_scraper():
                     f.write(markdown_content)
                     
                 logger.info(f"Successfully processed and saved to {file_path}")
+                success_count += 1
                 
             except Exception as e:
                 logger.error(f"Failed to process {url}: {str(e)}")
+                failure_count += 1
             
             # Rate Limiting Logic
             time.sleep(REQUEST_DELAY_SECONDS)
             
         browser.close()
+        return {"scraped_count": success_count, "failed_count": failure_count}
 
 if __name__ == "__main__":
     logger.info("Starting Phase 1 Scraping Job...")

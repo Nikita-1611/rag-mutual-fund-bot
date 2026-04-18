@@ -111,6 +111,7 @@ def run_normalizer():
         
     save_hashes(updated_hashes)
     logger.info(f"Phase 2 Complete. Processed: {processed_count}, Skipped: {skipped_count}")
+    return {"processed_count": processed_count, "skipped_count": skipped_count}
 
 if __name__ == "__main__":
     logger.info("Starting Phase 2 Normalization Job...")

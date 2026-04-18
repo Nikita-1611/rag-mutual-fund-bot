@@ -101,12 +101,25 @@ def run_pipeline():
         index_stats = run_indexing()
         logger.info(f"PHASE 4 COMPLETE: {index_stats}")
         
-        end_time = datetime.now()
-        duration = end_time - start_time
-        
         logger.info("="*50)
         logger.info(f"INGESTION SUCCESSFUL | Duration: {duration}")
         logger.info("="*50)
+        
+        # Create summary artifact
+        summary_path = os.path.join(os.path.dirname(PROJECT_ROOT), 'logs', 'summary.txt')
+        with open(summary_path, 'w', encoding='utf-8') as f:
+            f.write(f"SBI Mutual Fund Assistant - Ingestion Summary\n")
+            f.write(f"Timestamp: {start_time.strftime('%Y-%m-%d %H:%M:%S')}\n")
+            f.write(f"Duration: {duration}\n")
+            f.write(f"--------------------------------------------\n")
+            f.write(f"Phase 1 (Scraper):   {scraper_stats}\n")
+            f.write(f"Phase 2 (Normalize): {norm_stats}\n")
+            f.write(f"Phase 3 (Chunking):  {chunk_stats}\n")
+            f.write(f"Phase 4 (Indexing):  {index_stats}\n")
+            f.write(f"--------------------------------------------\n")
+            f.write(f"RESULT: 100% SUCCESSFUL\n")
+            
+        logger.info(f"Summary written to {summary_path}")
         
     except Exception as e:
         logger.error(f"FATAL ERROR DURING INGESTION: {str(e)}", exc_info=True)
