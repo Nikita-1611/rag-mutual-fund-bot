@@ -12,10 +12,8 @@ if PROJECT_ROOT not in sys.path:
 
 from pipeline.phase5_retrieval.retriever import RAGRetriever
 from api.models import SessionInitResponse, ChatQueryRequest, ChatQueryResponse, IngestResponse, HealthResponse
-from pipeline.phase1_scraping.scraper import run_scraper
-from pipeline.phase2_normalize.normalize import run_normalizer
-from pipeline.phase3_chunking.chunk_and_embed import run_chunking_and_embedding
-from pipeline.phase4_indexing.index_data import run_indexing
+# Ingestion imports moved to lazy-loading inside run_full_ingestion_cycle
+# to support 'Retrieval-Only' mode on Render where some binaries are missing.
 
 # Setup Logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -143,11 +141,19 @@ def run_full_ingestion_cycle():
     """Sequentially triggers all 4 phases of the ingestion pipeline."""
     logger.info("Background Ingestion Task Started.")
     try:
+        # Lazy imports to prevent boot failures on systems without Playwright/Tiktoken
+        from pipeline.phase1_scraping.scraper import run_scraper
+        from pipeline.phase2_normalize.normalize import run_normalizer
+        from pipeline.phase3_chunking.chunk_and_embed import run_chunking_and_embedding
+        from pipeline.phase4_indexing.index_data import run_indexing
+        
         run_scraper()
         run_normalizer()
         run_chunking_and_embedding()
         run_indexing()
         logger.info("Background Ingestion Task Completed Successfully.")
+    except ImportError as e:
+        logger.error(f"Ingestion Failed: Missing dependencies ({e}). Ingestion is likely disabled on this environment.")
     except Exception as e:
         logger.error(f"Background Ingestion Task Failed: {e}")
 

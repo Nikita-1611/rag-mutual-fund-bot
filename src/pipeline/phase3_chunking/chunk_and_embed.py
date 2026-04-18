@@ -23,11 +23,10 @@ def check_tabular(chunk_text: str) -> bool:
 
 def chunk_document(content: str, metadata: Dict[str, Any]) -> List[Dict[str, Any]]:
     """Splits document and infuses chunk-level metadata."""
-    # Using Tiktoken limits (500 tokens) to ensure size continuity
-    text_splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(
-        model_name="gpt-3.5-turbo", # BGE uses standard tokenizer similar to this limit scope
-        chunk_size=500,
-        chunk_overlap=50,
+    # Split by character count to avoid tiktoken binary dependency on Render
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=1500, # Approx 500 tokens
+        chunk_overlap=150,
         separators=["\n\n", "\n", " "]
     )
     

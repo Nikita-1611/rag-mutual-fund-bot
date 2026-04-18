@@ -1,9 +1,9 @@
-playwright==1.49.0
+# playwright removed to avoid greenlet build failures on Render
+# tiktoken removed to avoid rust-based build failures on Render
 beautifulsoup4==4.12.3
 html2text==2024.2.26
 tenacity==8.2.3
 langchain-text-splitters==0.0.1
-tiktoken==0.8.0
 sentence-transformers==3.3.1
 pinecone-client==3.2.2
 python-dotenv==1.0.1
