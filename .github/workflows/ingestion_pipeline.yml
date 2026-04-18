@@ -12,6 +12,16 @@ jobs:
     name: Scraping Service
     runs-on: ubuntu-latest
     
+    env:
+      # OPT-IN to Node.js 24 as requested to resolve deprecation warnings
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+      # Global secrets for the ingestion process
+      PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      COHERE_API_KEY: ${{ secrets.COHERE_API_KEY }}
+      # Ensure Python finds the 'src' directory package
+      PYTHONPATH: ${{ github.workspace }}/src
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -28,14 +38,13 @@ jobs:
           pip install -r requirements.txt
           python -m playwright install --with-deps chromium
           
-      - name: Run Master Ingestion Scheduler
-        env:
-          # Inject all required secrets into the process environment
-          PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
-          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-          COHERE_API_KEY: ${{ secrets.COHERE_API_KEY }}
-          # Ensure Python finds the 'src' directory package
-          PYTHONPATH: ${{ github.workspace }}/src
+      - name: Debug Environment
         run: |
-          # The Master Scheduler handles Cleanup -> Scrape -> Normalize -> Chunk -> Index
+          pwd
+          ls -R src/
+          pip list
+          
+      - name: Run Master Ingestion Scheduler
+        run: |
+          # Use local scheduler which handles Cleanup -> Scrape -> Normalize -> Chunk -> Index
           python src/scheduler_local.py
