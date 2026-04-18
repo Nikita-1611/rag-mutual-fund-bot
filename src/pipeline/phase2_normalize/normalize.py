@@ -28,10 +28,13 @@ def save_hashes(hashes_dict: dict):
 def compute_hash(content: str) -> str:
     return hashlib.sha256(content.encode('utf-8')).hexdigest()
 
+import ast
+
 def extract_metadata(content: str, filename: str) -> dict:
     metadata = {
         "source_url": "",
         "scheme_name": "",
+        "fund_tags": [],
         "last_updated": datetime.now(timezone.utc).isoformat()
     }
     
@@ -40,6 +43,15 @@ def extract_metadata(content: str, filename: str) -> dict:
     if url_match:
         metadata["source_url"] = url_match.group(1)
         
+    # Extract fund_tags from YAML frontmatter
+    tags_match = re.search(r'fund_tags:\s*(\[.*?\])', content)
+    if tags_match:
+        try:
+            # Safe evaluation of the Python-style list string
+            metadata["fund_tags"] = ast.literal_eval(tags_match.group(1))
+        except Exception:
+            metadata["fund_tags"] = []
+
     # Extract scheme_name from logic (e.g. filename or first title)
     # Since we know they are Groww urls, we can try to find the mutual fund name.
     # Usually it's in the text or we can format the filename slug.

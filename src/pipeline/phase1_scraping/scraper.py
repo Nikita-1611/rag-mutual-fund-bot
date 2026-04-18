@@ -8,7 +8,7 @@ import logging
 from urllib.parse import urlparse
 
 # Import phase 1 configuration
-from config import TARGET_URLS, HEADERS, REQUEST_DELAY_SECONDS, OUTPUT_DIR
+from pipeline.phase1_scraping.config import TARGET_URLS, HEADERS, REQUEST_DELAY_SECONDS, OUTPUT_DIR
 
 # Setup Logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")

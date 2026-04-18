@@ -1,0 +1,37 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-inter);
+  --font-display: var(--font-inter);
+
+  /* SBI Brand Palette */
+  --color-sbi-navy: #1a3d6d;
+  --color-sbi-red: #c1272d;
+  --color-sbi-light: #f8fafc;
+  --color-sbi-border: #e2e8f0;
+
+  /* Status Colors */
+  --color-sbi-yellow-bg: #fffbe6;
+  --color-sbi-yellow-border: #ffe58f;
+  --color-sbi-yellow-text: #d48806;
+}
+
+@layer base {
+  body {
+    @apply bg-sbi-light text-slate-800 antialiased;
+  }
+}
+
+@layer components {
+  .chat-bubble-user {
+    @apply bg-sbi-navy text-white rounded-2xl px-5 py-3 shadow-sm;
+  }
+
+  .chat-bubble-ai {
+    @apply bg-white text-slate-800 border border-sbi-border rounded-2xl px-5 py-3 shadow-sm;
+  }
+
+  .compliance-banner {
+    @apply bg-sbi-yellow-bg border border-sbi-yellow-border text-sbi-yellow-text p-4 rounded-xl shadow-sm;
+  }
+}

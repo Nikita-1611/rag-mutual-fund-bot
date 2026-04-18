@@ -36,26 +36,34 @@ def run_indexing():
 
     logger.info(f"Connecting to Pinecone...")
     pc = Pinecone(api_key=api_key)
-    
-    # Connect to the target index
     index = pc.Index(INDEX_NAME)
+
+    # NEW: Strict Freshness Policy - Purge ALL existing vectors before upserting new ones
+    logger.info(f"PURGING: Removing all existing vectors from index '{INDEX_NAME}'...")
+    try:
+        index.delete(delete_all=True)
+        logger.info("PURGE SUCCESSFUL.")
+    except Exception as e:
+        logger.warning(f"Purge failed (might be empty index): {e}")
     
     # Prepare data for upload: Pinecone needs tuples or dicts of (id, values, metadata)
     records = []
     
     for item in payloads:
         # Pinecone vector format {"id": str, "values": list[float], "metadata": dict}
+        meta = item["metadata"]
+        meta["text"] = item["text"]
         records.append({
             "id": item["chunk_id"],
             "values": item["embedding"],
-            "metadata": item["metadata"]
+            "metadata": meta
         })
         
     # Batch Upload to Pinecone (Max batch size usually 100-200)
     BATCH_SIZE = 100
     total_chunks = len(records)
     
-    logger.info(f"Starting upsert of {total_chunks} records into Pinecone index '{INDEX_NAME}'...")
+    logger.info(f"Starting fresh upsert of {total_chunks} records into index '{INDEX_NAME}'...")
     
     for i in range(0, total_chunks, BATCH_SIZE):
         batch = records[i:i + BATCH_SIZE]

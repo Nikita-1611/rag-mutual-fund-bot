@@ -31,19 +31,45 @@ def chunk_document(content: str, metadata: Dict[str, Any]) -> List[Dict[str, Any
         separators=["\n\n", "\n", " "]
     )
     
-    raw_chunks = text_splitter.split_text(content)
+    # 1. Clean the content of the frontmatter if it's causing noise
+    # (Optional, but let's keep the focus on prepending the verified tags)
+    clean_content = content
+    if content.startswith("---"):
+        parts = content.split("---", 2)
+        if len(parts) >= 3:
+            clean_content = parts[2].strip()
+            
+    raw_chunks = text_splitter.split_text(clean_content)
     processed_chunks = []
+    
+    # Prepare tags prefix with scheme name for explicit context
+    scheme_name = metadata.get("scheme_name", "Mutual Fund")
+    tags = metadata.get("fund_tags", [])
+    
+    # Clean up tags (remove problematic special characters like the corrupted bullet)
+    clean_tags = [t.replace("?", " ").replace("•", " ").strip() for t in tags]
+    tags_str = ", ".join(clean_tags)
+    
+    # Create a factual sentence-like prefix
+    if tags:
+        tags_prefix = f"Information for {scheme_name}: This fund is categorized with the following features and tags: {tags_str}.\n\n"
+    else:
+        tags_prefix = f"Information for {scheme_name}:\n\n"
     
     for text in raw_chunks:
         chunk_id = str(uuid.uuid4())
         is_tabular = check_tabular(text)
         
+        # Prepend explicit context to the text before embedding
+        final_text = tags_prefix + text
+        
         chunk_payload = {
             "chunk_id": chunk_id,
-            "text": text,
+            "text": final_text,
             "metadata": {
                 "source_url": metadata.get("source_url", ""),
                 "scheme_name": metadata.get("scheme_name", ""),
+                "fund_tags": tags,
                 "last_updated": metadata.get("last_updated", ""),
                 "is_tabular": is_tabular
             }
