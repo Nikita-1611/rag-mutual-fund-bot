@@ -44,8 +44,9 @@ jobs:
           ls -R src/
           pip list
           
-        # The Master Scheduler handles Cleanup -> Scrape -> Normalize -> Chunk -> Index
+      - name: Run Master Ingestion Scheduler
         run: |
+          # The Master Scheduler handles Cleanup -> Scrape -> Normalize -> Chunk -> Index
           python src/scheduler_local.py
 
       - name: Upload Ingestion Logs & Summary
