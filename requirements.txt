@@ -2,7 +2,7 @@ playwright==1.42.0
 beautifulsoup4==4.12.3
 html2text==2024.2.26
 tenacity==8.2.3
-langchain-text-splitters==0.3.6
+langchain-text-splitters==0.0.1
 tiktoken==0.8.0
 sentence-transformers==3.3.1
 pinecone-client==3.2.2
