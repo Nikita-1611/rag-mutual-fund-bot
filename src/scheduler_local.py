@@ -101,6 +101,9 @@ def run_pipeline():
         index_stats = run_indexing()
         logger.info(f"PHASE 4 COMPLETE: {index_stats}")
         
+        end_time = datetime.now()
+        duration = end_time - start_time
+        
         logger.info("="*50)
         logger.info(f"INGESTION SUCCESSFUL | Duration: {duration}")
         logger.info("="*50)
