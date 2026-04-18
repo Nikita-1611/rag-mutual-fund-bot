@@ -49,13 +49,17 @@ The production deployment incorporates two critical Phase 11 safety layers:
 
 ## 🛠️ Launch Commands
 
-### 1. Backend Service (Render)
-```powershell
-# Build Command
-pip install -r requirements.txt
-# Start Command
-uvicorn src.api.main:app --host 0.0.0.0 --port $PORT
-```
+### 1. Backend Service (Render Blueprint)
+The backend is configured via `render.yaml`. To deploy:
+1. Connect your GitHub repository to Render.
+2. Render will automatically detect the `render.yaml` and prompt you to create the "sbi-mf-faq-backend" service.
+3. **Manual Step**: Go to the **Environment** tab in Render and add the following secrets:
+   - `PINECONE_API_KEY`
+   - `GROQ_API_KEY`
+   - `COHERE_API_KEY`
+
+**Build Command**: `pip install -r requirements.txt`  
+**Start Command**: `uvicorn src.api.main:app --host 0.0.0.0 --port $PORT`
 
 ### 2. Frontend Dashboard (Vercel)
 - **Framework**: Next.js (App Router)
