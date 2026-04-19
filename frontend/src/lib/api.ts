@@ -1,7 +1,17 @@
 // Deployment Trigger: 2026-04-19T08:38:00
 import axios from 'axios';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+const getApiBaseUrl = () => {
+  const url = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+  // Standardize URL: Trim whitespace and remove trailing slashes
+  return url.trim().replace(/\/+$/, '');
+};
+
+const API_BASE_URL = getApiBaseUrl();
+
+if (typeof window !== 'undefined') {
+  console.log('[API] Initialized with Base URL:', API_BASE_URL);
+}
 
 export interface ChatMessage {
   role: 'user' | 'assistant';
@@ -25,8 +35,8 @@ export const api = {
     try {
       const response = await axios.post<SessionResponse>(`${API_BASE_URL}/session/init`);
       return response.data.session_id;
-    } catch (error) {
-      console.error('Failed to initialize session:', error);
+    } catch (error: any) {
+      console.error(`[API] Session init failed at ${API_BASE_URL}/session/init:`, error.message);
       throw error;
     }
   },
@@ -38,8 +48,8 @@ export const api = {
         query: query
       });
       return response.data;
-    } catch (error) {
-      console.error('Chat query failed:', error);
+    } catch (error: any) {
+      console.error(`[API] Chat query failed at ${API_BASE_URL}/chat/query:`, error.message);
       throw error;
     }
   },
