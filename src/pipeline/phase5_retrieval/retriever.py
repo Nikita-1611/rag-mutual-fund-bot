@@ -113,8 +113,8 @@ class RAGRetriever:
             max_retries=2
         )
         
-        # 5. Initialize Phase 6 Guardrail Pre-Flight Security Engine
-        self.guardrails = GuardrailEngine(google_api_key=google_api)
+        # 5. Initialize Phase 6 Guardrail Pre-Flight Security Engine (Keyword-based)
+        self.guardrails = GuardrailEngine()
         
     def _rewrite_query(self, user_question: str, history: List[Dict[str, str]]) -> str:
         """
