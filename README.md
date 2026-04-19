@@ -1,4 +1,4 @@
-# 📈 Mutual Fund FAQ Assistant (RAG)
+# 📈 SBI Mutual Fund FAQ Assistant (RAG)
 
 A production-ready Retrieval-Augmented Generation (RAG) system for strict, facts-only mutual fund queries.
 
