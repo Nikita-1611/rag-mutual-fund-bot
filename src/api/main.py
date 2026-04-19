@@ -76,29 +76,18 @@ def health_check():
     except Exception as e:
         logger.error(f"Health check failed for Pinecone: {e}")
 
-    # Check Gemini Connectivity (Live Probe with Fallback)
-    gemini_ok = False
+    # Check Groq Connectivity
+    groq_ok = False
     g_latency = 0.0
     try:
-        if retriever and hasattr(retriever, 'fallback_models'):
+        if retriever and hasattr(retriever, 'llm'):
             g_start = time.perf_counter()
-            last_error = ""
-            for model_name in retriever.fallback_models:
-                try:
-                    retriever.llm.model = model_name
-                    retriever.llm.invoke("ping")
-                    gemini_ok = True
-                    break # Success!
-                except Exception as e:
-                    last_error = str(e)
-                    if "404" in last_error or "not found" in last_error.lower():
-                        continue
-                    else:
-                        raise # Re-raise non-404 errors
-            
+            # Lightweight probe
+            retriever.llm.invoke("Hi")
             g_latency = (time.perf_counter() - g_start) * 1000
+            groq_ok = True
     except Exception as e:
-        logger.error(f"Health check failed for Gemini: {e}")
+        logger.error(f"Health check failed for Groq: {e}")
         
     # 3. Check Cohere (Unified Embedding & Rerank Probe)
     cohere_ok = False
@@ -118,13 +107,13 @@ def health_check():
         logger.error(f"Health check failed for Cohere: {e}")
 
     return HealthResponse(
-        status="healthy" if (pinecone_ok and gemini_ok and cohere_ok) else "degraded",
+        status="healthy" if (pinecone_ok and groq_ok and cohere_ok) else "degraded",
         pinecone_connected=pinecone_ok,
-        gemini_connected=gemini_ok,
+        groq_connected=groq_ok,
         cohere_connected=cohere_ok,
         pinecone_latency_ms=p_latency,
-        gemini_latency_ms=g_latency,
-        cohere_latency_ms=c_latency
+        groq_latency_ms=g_latency,
+        cohere_latency_ms=co_time
     )
 
 @app.post("/api/v1/session/init", response_model=SessionInitResponse)

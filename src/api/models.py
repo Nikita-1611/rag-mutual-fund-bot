@@ -21,8 +21,8 @@ class IngestResponse(BaseModel):
 class HealthResponse(BaseModel):
     status: str
     pinecone_connected: bool
-    gemini_connected: bool
+    groq_connected: bool
     cohere_connected: bool
     pinecone_latency_ms: Optional[float] = 0.0
-    gemini_latency_ms: Optional[float] = 0.0
+    groq_latency_ms: Optional[float] = 0.0
     cohere_latency_ms: Optional[float] = 0.0

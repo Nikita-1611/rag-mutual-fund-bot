@@ -6,7 +6,8 @@ from dotenv import load_dotenv
 # from huggingface_hub import InferenceClient # Removed for Cohere unification
 from pinecone import Pinecone
 import cohere
-from langchain_google_genai import ChatGoogleGenerativeAI
+import cohere
+from langchain_groq import ChatGroq
 from langchain_core.prompts import PromptTemplate
 import sys
 
@@ -99,31 +100,17 @@ class RAGRetriever:
             raise ValueError("Missing COHERE_API_KEY")
         self.co_client = cohere.Client(api_key=cohere_api)
 
-        # 4. Initialize Gemini 1.5 Flash Generator via Google AI
-        google_api = os.environ.get("GOOGLE_API_KEY")
-        if not google_api:
-            logger.error("GOOGLE_API_KEY environment variable not set.")
-            raise ValueError("Missing GOOGLE_API_KEY")
-        
-        # Robust LLM Initialization (v1 REST Stack)
-        # Forcing v1 version and rest transport to bypass v1beta 404 errors on Render.
-        self.google_api_key = google_api
-        self.fallback_models = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"]
-        
-        # Initialize primary LLM with stable production settings
-        self.llm = ChatGoogleGenerativeAI(
-            model=self.fallback_models[0], 
+        # 4. Initialize Llama-3 Generator via Groq
+        groq_api = os.environ.get("GROQ_API_KEY")
+        if not groq_api or "your_groq_api" in groq_api:
+            logger.error("GROQ_API_KEY environment variable not set.")
+            raise ValueError("Missing GROQ_API_KEY")
+            
+        # Initialize Groq Llama-3.1 Model. Temp=0.0 is critical for determinism.
+        self.llm = ChatGroq(
+            model_name="llama-3.1-70b-versatile", 
             temperature=0.0, 
-            google_api_key=self.google_api_key,
-            max_retries=2,
-            version="v1",
-            transport="rest",
-            safety_settings={
-                "HARM_CATEGORY_HARASSMENT": "BLOCK_NONE",
-                "HARM_CATEGORY_HATE_SPEECH": "BLOCK_NONE",
-                "HARM_CATEGORY_SEXUALLY_EXPLICIT": "BLOCK_NONE",
-                "HARM_CATEGORY_DANGEROUS_CONTENT": "BLOCK_NONE",
-            }
+            groq_api_key=groq_api
         )
         
         # 5. Initialize Phase 6 Guardrail Pre-Flight Security Engine (Keyword-based)
@@ -270,49 +257,26 @@ class RAGRetriever:
             
         context_str = "\n\n---\n\n".join(context_chunks)
         
-        # Step 4: Generate Response via resilient LLM loop
-        logger.info("Passing top 3 re-ranked contexts to LLM constraint generator...")
+        # Step 4: Generate Response via Groq LLM
+        logger.info("Passing top 3 re-ranked contexts to LLM generator...")
         prompt = PromptTemplate(template=PROMPT_TEMPLATE, input_variables=["context", "question"])
         
-        last_error = ""
-        for model_name in self.fallback_models:
-            try:
-                # Update model for this attempt
-                self.llm.model = model_name
-                logger.info(f"Attempting generation with model: {model_name}")
-                
-                chain = prompt | self.llm
-                response = chain.invoke({"context": context_str, "question": user_question})
-                output_text = response.content.strip()
-                
-                # If we got here, success!
-                break
-            except Exception as e:
-                last_error = str(e)
-                if "404" in last_error or "not found" in last_error.lower():
-                    logger.warning(f"Model {model_name} not found. Trying next fallback...")
-                    continue
-                else:
-                    # Non-404 error (Auth, Quota), log and return immediately
-                    logger.error(f"Gemini critical error ({model_name}): {last_error}")
-                    return {
-                        "answer": f"External Connectivity Error: Google Gemini is currently unreachable. Reason: {last_error}",
-                        "source_url": "N/A",
-                        "last_updated": "N/A",
-                        "is_refusal": True,
-                        "is_error": True
-                    }
-        else:
-            # All fallbacks failed
+        try:
+            chain = prompt | self.llm
+            response = chain.invoke({"context": context_str, "question": user_question})
+        except Exception as e:
+            logger.exception(f"Groq LLM invocation failed: {e}")
             return {
-                "answer": f"External Connectivity Error: No supported Gemini models were found for your API key. (Last error: {last_error})",
+                "answer": f"External Connectivity Error: The generation engine (Groq) is currently unreachable. Reason: {str(e)}",
                 "source_url": "N/A",
                 "last_updated": "N/A",
                 "is_refusal": True,
                 "is_error": True
             }
-        
+            
         # Execute Phase 7 Post-Processing Constraint Validation
+        output_text = response.content.strip()
+        
         # If the LLM returns the explicit refusal string, we skip citations
         if "I do not have this factual information" in output_text:
             return {
