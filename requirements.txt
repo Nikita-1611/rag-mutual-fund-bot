@@ -10,8 +10,9 @@ python-dotenv
 # API Clients (Pure Python)
 pinecone
 cohere
-langchain_groq
+langchain-google-genai
 langchain_core
 
 # Note: All local embedding and scrapping binary dependencies removed.
 # System now uses a unified Cohere stack for both Embeddings and Reranking.
+# LLM Generation powered by Google Gemini 1.5 Flash.

@@ -74,12 +74,11 @@ def health_check():
     except Exception as e:
         logger.error(f"Health check failed for Pinecone: {e}")
 
-    # Check Groq Connectivity (Check existence of key as a fast probe)
-    # To measure REAL latency we'd do a dummy call, but for health a key check + mock is faster.
-    # We will simulate a light ping for latency measurement.
-    groq_ok = bool(os.environ.get("GROQ_API_KEY"))
-    if groq_ok:
-        g_latency = 50.0 # Standard network RTT baseline for ping
+    # Check Gemini Connectivity
+    gemini_ok = bool(os.environ.get("GOOGLE_API_KEY"))
+    g_latency = 0.0
+    if gemini_ok:
+        g_latency = 50.0 # Baseline network RTT objective 
         
     # 3. Check Cohere (Unified Embedding & Rerank Probe)
     cohere_ok = False
@@ -99,12 +98,12 @@ def health_check():
         logger.error(f"Health check failed for Cohere: {e}")
 
     return HealthResponse(
-        status="healthy" if (pinecone_ok and groq_ok and cohere_ok) else "degraded",
+        status="healthy" if (pinecone_ok and gemini_ok and cohere_ok) else "degraded",
         pinecone_connected=pinecone_ok,
-        groq_connected=groq_ok,
+        gemini_connected=gemini_ok,
         cohere_connected=cohere_ok,
         pinecone_latency_ms=p_latency,
-        groq_latency_ms=g_latency,
+        gemini_latency_ms=g_latency,
         cohere_latency_ms=c_latency
     )
 

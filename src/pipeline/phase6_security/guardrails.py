@@ -1,7 +1,7 @@
 import re
 import logging
 from typing import Tuple
-from langchain_groq import ChatGroq
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import PromptTemplate
 
 logger = logging.getLogger(__name__)
@@ -29,9 +29,13 @@ class GuardrailEngine:
     financial advisory hallucination attempts strictly before Vector DB Retrieval.
     """
     
-    def __init__(self, groq_api_key: str):
-        # We use a standalone, rapid Groq node for zero-shot classification 
-        self.classifier_llm = ChatGroq(model_name="llama-3.1-8b-instant", temperature=0.0, groq_api_key=groq_api_key)
+    def __init__(self, google_api_key: str):
+        # We use a standalone, rapid Gemini 1.5 Flash node for zero-shot classification 
+        self.classifier_llm = ChatGoogleGenerativeAI(
+            model="gemini-1.5-flash", 
+            temperature=0.0, 
+            google_api_key=google_api_key
+        )
         self.intent_prompt = PromptTemplate(template=INTENT_PROMPT, input_variables=["query"])
         self.chain = self.intent_prompt | self.classifier_llm
 
@@ -63,7 +67,7 @@ class GuardrailEngine:
              return False, PII_REFUSAL_PAYLOAD
              
         # Layer 2: Subjective/Advice Intent Classifier
-        logger.info("Executing zero-shot Llama-3 Intent Classification...")
+        logger.info("Executing zero-shot Gemini Intent Classification...")
         try:
             response = self.chain.invoke({"query": query})
             intent = response.content.strip().upper()

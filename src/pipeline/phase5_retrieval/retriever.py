@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 # from huggingface_hub import InferenceClient # Removed for Cohere unification
 from pinecone import Pinecone
 import cohere
-from langchain_groq import ChatGroq
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import PromptTemplate
 import sys
 
@@ -99,19 +99,26 @@ class RAGRetriever:
             raise ValueError("Missing COHERE_API_KEY")
         self.co_client = cohere.Client(api_key=cohere_api)
 
-        # 4. Initialize Llama-3 Generator via Groq
-        groq_api = os.environ.get("GROQ_API_KEY")
-        if not groq_api or "your_groq_api" in groq_api:
-            raise ValueError("Missing GROQ_API_KEY")
-        # Initialize Groq Llama-3 Model. Temp=0.0 is critical for determinism.
-        self.llm = ChatGroq(model_name="llama-3.1-8b-instant", temperature=0.0, groq_api_key=groq_api)
+        # 4. Initialize Gemini 1.5 Flash Generator via Google AI
+        google_api = os.environ.get("GOOGLE_API_KEY")
+        if not google_api:
+            logger.error("GOOGLE_API_KEY environment variable not set.")
+            raise ValueError("Missing GOOGLE_API_KEY")
+        
+        # Initialize Gemini 1.5 Flash. Temp=0.0 is critical for determinism.
+        self.llm = ChatGoogleGenerativeAI(
+            model="gemini-1.5-flash", 
+            temperature=0.0, 
+            google_api_key=google_api,
+            max_retries=2
+        )
         
         # 5. Initialize Phase 6 Guardrail Pre-Flight Security Engine
-        self.guardrails = GuardrailEngine(groq_api_key=groq_api)
+        self.guardrails = GuardrailEngine(google_api_key=google_api)
         
     def _rewrite_query(self, user_question: str, history: List[Dict[str, str]]) -> str:
         """
-        Uses Llama-3 to rewrite follow-up questions into standalone queries.
+        Uses Gemini 1.5 Flash to rewrite follow-up questions into standalone queries.
         """
         if not history:
             return user_question
@@ -250,7 +257,7 @@ class RAGRetriever:
             
         context_str = "\n\n---\n\n".join(context_chunks)
         
-        # Step 4: Generate Response via Groq LLM
+        # Step 4: Generate Response via Gemini LLM
         logger.info("Passing top 3 re-ranked contexts to LLM constraint generator...")
         prompt = PromptTemplate(template=PROMPT_TEMPLATE, input_variables=["context", "question"])
         
@@ -258,9 +265,9 @@ class RAGRetriever:
             chain = prompt | self.llm
             response = chain.invoke({"context": context_str, "question": user_question})
         except Exception as e:
-            logger.exception(f"Groq LLM invocation failed: {e}")
+            logger.exception(f"Gemini LLM invocation failed: {e}")
             return {
-                "answer": "External Connectivity Error: The generation engine (Groq) is currently unreachable.",
+                "answer": "External Connectivity Error: The generation engine (Google Gemini) is currently unreachable.",
                 "source_url": "N/A",
                 "last_updated": "N/A",
                 "is_refusal": True,
