@@ -26,19 +26,21 @@ def check_tabular(chunk_text: str) -> bool:
 def strip_groww_noise(text: str) -> str:
     """Removes standard Groww website navigation headers and footers."""
     # Find the start of the actual content
-    # Standard Groww fund pages have "3Y annualised" or "1Y annualised" or "NAV:" near the top
-    start_markers = ["3Y annualised", "NAV:", "Fund size (AUM)"]
+    # Look for the start of the info section, skipping the "Search/Login" area
+    # Key markers that always appear near the real fund stats
+    start_markers = ["3Y annualised", "NAV: ", "Fund size (AUM)"]
     start_index = 0
     
     for marker in start_markers:
         idx = text.find(marker)
         if idx != -1:
-            # Back up a bit to include any nearby headers, or just start at marker
-            start_index = max(0, idx - 100)
+            # We want to keep everything from a few lines before the stats
+            # (which usually contains the fund title and basic info)
+            start_index = max(0, idx - 200)
             break
             
-    # Find the start of the footer noise
-    end_markers = ["Download the App", "© 2016-2026 Groww", "Vaishnavi Tech Park"]
+    # Find the start of the footer noise - being more specific
+    end_markers = ["Download the App", "© 2016-2026 Groww", "Vaishnavi Tech Park", "Compare similar funds"]
     end_index = len(text)
     
     for marker in end_markers:
@@ -48,6 +50,25 @@ def strip_groww_noise(text: str) -> str:
             break
             
     return text[start_index:end_index].strip()
+
+def sanitize_tags(tags: List[str]) -> List[str]:
+    """Cleans up special characters and expands shorthands in tags for better embedding."""
+    clean_tags = []
+    for t in tags:
+        # Standardize spacing and remove special bullets
+        t = t.replace("•", " ").strip()
+        while "  " in t:
+            t = t.replace("  ", " ")
+            
+        # Expand common shorthands for higher semantic density
+        t = t.replace("3Y", "3 Year").replace("1Y", "1 Year").replace("5Y", "5 Year")
+        
+        # Ensure "Lock-in period" is explicit for matching
+        if "Lock-in" in t and "period" not in t.lower():
+            t = t.replace("Lock-in", "Lock-in period")
+            
+        clean_tags.append(t.strip())
+    return clean_tags
 
 def chunk_document(content: str, metadata: Dict[str, Any]) -> List[Dict[str, Any]]:
     """Splits document and infuses chunk-level metadata."""
@@ -86,20 +107,25 @@ def chunk_document(content: str, metadata: Dict[str, Any]) -> List[Dict[str, Any
     else:
         tags_prefix = f"Information for {scheme_name}:\n\n"
     
+    doc_url = metadata.get("source_url", "N/A")
+    clean_tags = sanitize_tags(tags)
+    
     for text in raw_chunks:
         chunk_id = str(uuid.uuid4())
         is_tabular = check_tabular(text)
         
-        # Prepend explicit context to the text before embedding
-        final_text = tags_prefix + text
+        # Refined context prefix for better semantic density
+        # Natural language helps Cohere understand the context better than labels
+        # Removed the SOURCE URL from text to reduce non-semantic noise
+        final_text = f"Factual information about {scheme_name}. Key features and attributes: {', '.join(clean_tags)}.\n\nDescription and Data: {text}"
         
         chunk_payload = {
             "chunk_id": chunk_id,
             "text": final_text,
             "metadata": {
-                "source_url": metadata.get("source_url", ""),
-                "scheme_name": metadata.get("scheme_name", ""),
-                "fund_tags": tags,
+                "source_url": doc_url,
+                "scheme_name": scheme_name,
+                "fund_tags": clean_tags,
                 "last_updated": metadata.get("last_updated", ""),
                 "is_tabular": is_tabular
             }

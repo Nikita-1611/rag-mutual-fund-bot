@@ -61,7 +61,9 @@ const Sidebar: React.FC<SidebarProps> = ({
                 <span className="text-[10px] text-slate-400 font-medium">No history found.</span>
               </div>
             )}
-            {Object.entries(threads).map(([id, msgs]) => (
+            {Object.entries(threads)
+              .filter(([_, msgs]) => msgs.length > 0)
+              .map(([id, msgs]) => (
               <button
                 key={id}
                 onClick={() => onSelectThread(id)}

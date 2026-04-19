@@ -203,10 +203,10 @@ class RAGRetriever:
                 "is_error": True
             }
         
-        # Reject chunks if the top match score is below 0.65 
+        # Reject chunks if the top match score is below 0.55 
         # (prevents hallucinating "close enough" but incorrect data)
-        # Note: Adjusted from 0.70 for Cohere V3 distribution
-        if not matches or (matches[0].get("score", 0) < 0.65):
+        # Note: Adjusted to 0.55 to capture specific factual matches (e.g. lock-in)
+        if not matches or (matches[0].get("score", 0) < 0.55):
             logger.warning(f"Low confidence retrieval (Score: {matches[0].get('score', 0) if matches else 0}). Returning fallback.")
             return {
                 "answer": "I do not have this factual information in my current corpus.",
