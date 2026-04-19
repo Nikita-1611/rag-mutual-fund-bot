@@ -1,12 +1,14 @@
 services:
   - type: web
     name: sbi-mf-faq-backend
-    env: python
-    buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn src.api.main:app --host 0.0.0.0 --port $PORT
+    env: docker
     envVars:
       - key: PYTHONPATH
         value: src
+      - key: OMP_NUM_THREADS
+        value: "1"
+      - key: PYTHONUNBUFFERED
+        value: "1"
       - key: PINECONE_API_KEY
         sync: false
       - key: GROQ_API_KEY
@@ -14,6 +16,6 @@ services:
       - key: COHERE_API_KEY
         sync: false
       - key: PINECONE_ENVIRONMENT
-        value: "us-east-1" # Update this to your actual Pinecone env if different
+        value: "us-east-1"
     healthCheckPath: /api/v1/health
     autoDeploy: true

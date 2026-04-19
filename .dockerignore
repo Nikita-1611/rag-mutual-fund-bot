@@ -1,0 +1,35 @@
+# Exclude frontend
+frontend/
+
+# Exclude Git and GitHub
+.git/
+.github/
+
+# Exclude Python artifacts
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/*.pyd
+venv/
+.venv/
+env/
+.env
+
+# Exclude local data and secrets
+output/
+hashes.json
+page.html
+
+# Exclude logs and temp files
+logs/
+scratch/
+.DS_Store
+
+# Exclude IDE settings
+.vscode/
+.idea/
+
+# Exclude Documentation (Optional, but saves space)
+Docs/
+README.md
+run_tests.py
