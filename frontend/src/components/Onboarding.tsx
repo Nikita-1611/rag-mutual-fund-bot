@@ -9,10 +9,10 @@ interface OnboardingProps {
 
 const Onboarding: React.FC<OnboardingProps> = ({ onSelect }) => {
   const examples = [
-    { label: 'SBI ELSS Details', query: 'What is the lock-in period for SBI ELSS Tax Saver?' },
-    { label: 'Exit Load Policy', query: 'What is the exit load for SBI Mutual Flexicap Fund?' },
-    { label: 'SIP Minimums', query: 'What is the minimum SIP amount for SBI Large Cap Fund?' },
-    { label: 'Stamp Duty', query: 'What are the stamp duty charges for SBI Mutual Fund investments?' }
+    { label: 'Lock-in Period', query: 'What is the lock-in period for SBI ELSS Tax Saver?' },
+    { label: 'Exit Load Policy', query: 'What is the exit load for SBI Flexicap Fund?' },
+    { label: 'Minimum SIP', query: 'What is the minimum SIP for SBI Large Cap Fund?' },
+    { label: 'Expense Ratio', query: 'What is the expense ratio for SBI Magnum Multiplier?' }
   ];
 
   return (
