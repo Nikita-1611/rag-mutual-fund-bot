@@ -14,20 +14,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-# Install CPU-only torch to drastically reduce image size and memory footprint
-# This prevents downloading ~1GB of CUDA binaries which are useless on Render Free Tier
-RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
-
-# Install requirements
+# Install production requirements
+# fastembed replaces sentence-transformers/torch, saving ~300MB RAM
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Pre-download the embedding model to ensure fast startup and prevent runtime downloads
-# This saves the model into the image during the build process
-RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('BAAI/bge-small-en-v1.5')"
+# Pre-download the embedding model into the image cache
+# This ensures startup is fast and won't exceed RAM during runtime download
+RUN python -c "from fastembed import TextEmbedding; TextEmbedding(model_name='BAAI/bge-small-en-v1.5')"
 
 # Copy the backend source code
-# Note: .dockerignore ensures that frontend/, output/, etc. are NOT copied
+# .dockerignore ensures that frontend/, output/, etc. are NOT copied
 COPY src/ ./src/
 
 # Expose the API port (Render sets $PORT env var)

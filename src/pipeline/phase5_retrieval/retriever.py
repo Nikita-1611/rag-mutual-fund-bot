@@ -3,7 +3,7 @@ import logging
 from typing import List, Dict, Any
 from dotenv import load_dotenv
 
-from sentence_transformers import SentenceTransformer
+from fastembed import TextEmbedding
 from pinecone import Pinecone
 import cohere
 from langchain_groq import ChatGroq
@@ -89,8 +89,8 @@ class RAGRetriever:
         self.index = self.pc.Index(INDEX_NAME)
 
         # 2. Local Custom Embedder (Must match what we indexed in Phase 4)
-        logger.info("Loading local bge-small-en-v1.5 sentence-transformer model...")
-        self.embed_model = SentenceTransformer("BAAI/bge-small-en-v1.5")
+        logger.info("Loading fastembed bge-small-en-v1.5 model...")
+        self.embed_model = TextEmbedding(model_name="BAAI/bge-small-en-v1.5")
 
         # 3. Initialize Cohere for Cross-Encoder Re-Ranking
         cohere_api = os.environ.get("COHERE_API_KEY")
@@ -159,9 +159,10 @@ class RAGRetriever:
                 "is_refusal": True
             }
             
-        # Step 1: Embed Query (Locally)
+        # Step 1: Embed Query (Locally using FastEmbed)
         logger.info("Embedding the query...")
-        query_vector = self.embed_model.encode(standalone_question, normalize_embeddings=True).tolist()
+        # FastEmbed returns a generator, we take the first item
+        query_vector = list(self.embed_model.embed([standalone_question]))[0].tolist()
         
         # Step 2: Hybrid/Dense Search on Pinecone
         logger.info("Fetching Top-15 semantic candidates from Pinecone...")
