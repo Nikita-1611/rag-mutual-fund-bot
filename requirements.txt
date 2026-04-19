@@ -1,7 +1,7 @@
 # Pure Python Requirements (No compilation, no Rust/C++)
 # ---------------------------------------------------
 
-# Web Server (High quality wheels available for all platforms)
+# Web Server
 fastapi
 uvicorn
 gunicorn
@@ -12,7 +12,6 @@ pinecone
 cohere
 langchain_groq
 langchain_core
-huggingface_hub
 
-# Note: All heavy local model libraries (torch, fastembed, onnx) 
-# have been replaced by API calls to ensure no compilation on Render.
+# Note: All local embedding and scrapping binary dependencies removed.
+# System now uses a unified Cohere stack for both Embeddings and Reranking.

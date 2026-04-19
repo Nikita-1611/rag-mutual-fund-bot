@@ -3,7 +3,7 @@ import logging
 from typing import List, Dict, Any
 from dotenv import load_dotenv
 
-from huggingface_hub import InferenceClient
+# from huggingface_hub import InferenceClient # Removed for Cohere unification
 from pinecone import Pinecone
 import cohere
 from langchain_groq import ChatGroq
@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 if not logger.hasHandlers():
     logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
-ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))) # RAG directory
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))) # RAG directory
 load_dotenv(os.path.join(ROOT_DIR, ".env"))
 
 # Check for Tracing Status
@@ -88,11 +88,10 @@ class RAGRetriever:
         self.pc = Pinecone(api_key=pc_api)
         self.index = self.pc.Index(INDEX_NAME)
 
-        # 2. API-based Embedder (Replaces local heavy libraries for Render optimization)
-        # Must match what we indexed in Phase 4 (BAAI/bge-small-en-v1.5)
-        hf_token = os.environ.get("HF_TOKEN")
-        logger.info("Initializing HuggingFace Inference API client...")
-        self.hf_client = InferenceClient(api_key=hf_token)
+        # 2. API-based Embedder (Unified under Cohere)
+        # Using embed-english-light-v3.0 (384 dimensions)
+        logger.info("Using Cohere for unified embeddings and re-ranking...")
+        # (co_client is initialized below in Step 3)
 
         # 3. Initialize Cohere for Cross-Encoder Re-Ranking
         cohere_api = os.environ.get("COHERE_API_KEY")
@@ -161,27 +160,24 @@ class RAGRetriever:
                 "is_refusal": True
             }
             
-        # Step 1: Embed Query (via HuggingFace Inference API - Pure Python)
-        logger.info("Embedding the query via API...")
+        # Step 1: Embed Query (via Cohere API - Pure Python)
+        logger.info("Embedding the query via Cohere API...")
         try:
-            query_vector = self.hf_client.feature_extraction(
-                text=standalone_question,
-                model="BAAI/bge-small-en-v1.5"
+            response = self.co_client.embed(
+                texts=[standalone_question],
+                model='embed-english-light-v3.0',
+                input_type='search_query',
+                embedding_types=['float']
             )
-            
-            # Ensure it's a standard list for Pinecone
-            if isinstance(query_vector, (list, tuple)) and len(query_vector) > 0 and isinstance(query_vector[0], list):
-                 query_vector = query_vector[0] 
-            elif hasattr(query_vector, "tolist"):
-                 query_vector = query_vector.tolist()
+            query_vector = response.embeddings.float[0]
                  
             if not query_vector:
-                raise ValueError("HuggingFace returned an empty embedding vector.")
+                raise ValueError("Cohere returned an empty embedding vector.")
                 
         except Exception as e:
-            logger.exception(f"HuggingFace Embedding API failed: {e}")
+            logger.exception(f"Cohere Embedding API failed: {e}")
             return {
-                "answer": "External Connectivity Error: The embedding service (HuggingFace) is currently unavailable or unauthorized. Please check your HF_TOKEN.",
+                "answer": "External Connectivity Error: The embedding service (Cohere) is currently unavailable or unauthorized. Please check your COHERE_API_KEY.",
                 "source_url": "N/A",
                 "last_updated": "N/A",
                 "is_refusal": True,
@@ -207,10 +203,10 @@ class RAGRetriever:
                 "is_error": True
             }
         
-        # Phase 11 Mitigation: Similarity Thresholding
-        # Reject chunks if the top match score is below 0.70 
+        # Reject chunks if the top match score is below 0.65 
         # (prevents hallucinating "close enough" but incorrect data)
-        if not matches or (matches[0].get("score", 0) < 0.70):
+        # Note: Adjusted from 0.70 for Cohere V3 distribution
+        if not matches or (matches[0].get("score", 0) < 0.65):
             logger.warning(f"Low confidence retrieval (Score: {matches[0].get('score', 0) if matches else 0}). Returning fallback.")
             return {
                 "answer": "I do not have this factual information in my current corpus.",

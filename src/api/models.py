@@ -23,8 +23,6 @@ class HealthResponse(BaseModel):
     pinecone_connected: bool
     groq_connected: bool
     cohere_connected: bool
-    hf_connected: bool
     pinecone_latency_ms: Optional[float] = 0.0
     groq_latency_ms: Optional[float] = 0.0
     cohere_latency_ms: Optional[float] = 0.0
-    hf_latency_ms: Optional[float] = 0.0

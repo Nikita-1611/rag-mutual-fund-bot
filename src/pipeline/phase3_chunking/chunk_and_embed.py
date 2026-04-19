@@ -6,20 +6,48 @@ import re
 from typing import List, Dict, Any
 
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from sentence_transformers import SentenceTransformer
+import cohere
 
 # Setup Logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 # Paths
-ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))) # RAG directory
-INPUT_DIR = os.path.join(ROOT_DIR, "..", "output", "normalized")
-OUTPUT_DIR = os.path.join(ROOT_DIR, "..", "output", "embedded")
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))) # RAG directory
+from dotenv import load_dotenv
+load_dotenv(os.path.join(ROOT_DIR, ".env"))
+INPUT_DIR = os.path.join(ROOT_DIR, "output", "normalized")
+OUTPUT_DIR = os.path.join(ROOT_DIR, "output", "embedded")
 
 def check_tabular(chunk_text: str) -> bool:
     """Checks if the markdown text chunk contains a table format."""
     return "|---" in chunk_text or "| ---" in chunk_text
+
+def strip_groww_noise(text: str) -> str:
+    """Removes standard Groww website navigation headers and footers."""
+    # Find the start of the actual content
+    # Standard Groww fund pages have "3Y annualised" or "1Y annualised" or "NAV:" near the top
+    start_markers = ["3Y annualised", "NAV:", "Fund size (AUM)"]
+    start_index = 0
+    
+    for marker in start_markers:
+        idx = text.find(marker)
+        if idx != -1:
+            # Back up a bit to include any nearby headers, or just start at marker
+            start_index = max(0, idx - 100)
+            break
+            
+    # Find the start of the footer noise
+    end_markers = ["Download the App", "© 2016-2026 Groww", "Vaishnavi Tech Park"]
+    end_index = len(text)
+    
+    for marker in end_markers:
+        idx = text.find(marker, start_index)
+        if idx != -1:
+            end_index = idx
+            break
+            
+    return text[start_index:end_index].strip()
 
 def chunk_document(content: str, metadata: Dict[str, Any]) -> List[Dict[str, Any]]:
     """Splits document and infuses chunk-level metadata."""
@@ -37,6 +65,9 @@ def chunk_document(content: str, metadata: Dict[str, Any]) -> List[Dict[str, Any
         parts = content.split("---", 2)
         if len(parts) >= 3:
             clean_content = parts[2].strip()
+            
+    # NEW: Strip Groww-specific navigation/footer noise
+    clean_content = strip_groww_noise(clean_content)
             
     raw_chunks = text_splitter.split_text(clean_content)
     processed_chunks = []
@@ -78,31 +109,45 @@ def chunk_document(content: str, metadata: Dict[str, Any]) -> List[Dict[str, Any
     return processed_chunks
 
 def embed_chunks(chunks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Embeds a batch of chunks using local BAAI bge-small-en-v1.5 model."""
-    logger.info("Loading local BAAI/bge-small-en-v1.5 model...")
-    # Instantiate the local model
-    try:
-        model = SentenceTransformer("BAAI/bge-small-en-v1.5")
-    except Exception as e:
-        logger.error(f"Failed to load sentence_transformers: {str(e)}")
-        raise
+    """Embeds a batch of chunks using Cohere's embed-english-light-v3.0 (384-dim)."""
+    co_api = os.environ.get("COHERE_API_KEY")
+    if not co_api:
+        logger.error("COHERE_API_KEY not found in environment!")
+        raise ValueError("COHERE_API_KEY missing.")
+        
+    co = cohere.Client(co_api)
     
-    BATCH_SIZE = 32
+    BATCH_SIZE = 96 # Cohere v3 supports up to 96 texts per batch
     total_chunks = len(chunks)
+    
+    logger.info(f"Starting Cohere embedding for {total_chunks} chunks...")
     
     for i in range(0, total_chunks, BATCH_SIZE):
         batch = chunks[i:i + BATCH_SIZE]
         texts = [c["text"] for c in batch]
         
-        logger.info(f"Submitting batch {i} to {min(i+BATCH_SIZE, total_chunks)} for local embedding inference...")
-        # encode returns a numpy array, convert to list for JSON serialization
-        embeddings = model.encode(texts, normalize_embeddings=True)
+        logger.info(f"Submitting batch {i} to {min(i+BATCH_SIZE, total_chunks)} to Cohere...")
         
-        # Map embeddings back to chunks
-        for j, embedding_array in enumerate(embeddings):
-            batch[j]["embedding"] = embedding_array.tolist()
+        try:
+            response = co.embed(
+                texts=texts,
+                model='embed-english-light-v3.0',
+                input_type='search_document',
+                embedding_types=['float']
+            )
+            # Cohere v3 returns 'float' embeddings in 'embeddings.float'
+            # (or just 'embeddings' depending on the response object)
+            embeddings = response.embeddings.float
             
-    logger.info(f"Successfully vectorized {total_chunks} chunks locally.")
+            # Map embeddings back to chunks
+            for j, embedding in enumerate(embeddings):
+                batch[j]["embedding"] = embedding
+                
+        except Exception as e:
+            logger.error(f"Cohere embedding failed: {e}")
+            raise
+            
+    logger.info(f"Successfully vectorized {total_chunks} chunks via Cohere.")
     return chunks
 
 def run_chunking_and_embedding():
