@@ -76,17 +76,27 @@ def health_check():
     except Exception as e:
         logger.error(f"Health check failed for Pinecone: {e}")
 
-    # Check Gemini Connectivity (Live Probe)
+    # Check Gemini Connectivity (Live Probe with Fallback)
     gemini_ok = False
     g_latency = 0.0
     try:
-        google_api = os.environ.get("GOOGLE_API_KEY")
-        if google_api and retriever:
+        if retriever and hasattr(retriever, 'fallback_models'):
             g_start = time.perf_counter()
-            # Lightweight probe using a single token to verify auth and readiness
-            retriever.llm.invoke("ping")
+            last_error = ""
+            for model_name in retriever.fallback_models:
+                try:
+                    retriever.llm.model = model_name
+                    retriever.llm.invoke("ping")
+                    gemini_ok = True
+                    break # Success!
+                except Exception as e:
+                    last_error = str(e)
+                    if "404" in last_error or "not found" in last_error.lower():
+                        continue
+                    else:
+                        raise # Re-raise non-404 errors
+            
             g_latency = (time.perf_counter() - g_start) * 1000
-            gemini_ok = True
     except Exception as e:
         logger.error(f"Health check failed for Gemini: {e}")
         

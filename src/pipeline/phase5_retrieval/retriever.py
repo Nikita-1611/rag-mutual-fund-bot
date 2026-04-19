@@ -105,12 +105,17 @@ class RAGRetriever:
             logger.error("GOOGLE_API_KEY environment variable not set.")
             raise ValueError("Missing GOOGLE_API_KEY")
         
-        # Initialize Gemini 1.5 Flash. Temp=0.0 is critical for determinism.
-        # Added BLOCK_NONE to prevent false-positive censorship of fund documentation.
+        # Robust LLM Initialization
+        # We store the config, but we will handle the actual model selection dynamically 
+        # to handle 404 'Not Found' errors for specific model versions.
+        self.google_api_key = google_api
+        self.fallback_models = ["gemini-1.5-flash-latest", "gemini-1.5-flash", "gemini-1.5-pro", "gemini-pro"]
+        
+        # Initialize primary LLM
         self.llm = ChatGoogleGenerativeAI(
-            model="gemini-1.5-flash", 
+            model=self.fallback_models[0], 
             temperature=0.0, 
-            google_api_key=google_api,
+            google_api_key=self.google_api_key,
             max_retries=2,
             safety_settings={
                 "HARM_CATEGORY_HARASSMENT": "BLOCK_NONE",
@@ -264,18 +269,42 @@ class RAGRetriever:
             
         context_str = "\n\n---\n\n".join(context_chunks)
         
-        # Step 4: Generate Response via Gemini LLM
+        # Step 4: Generate Response via resilient LLM loop
         logger.info("Passing top 3 re-ranked contexts to LLM constraint generator...")
         prompt = PromptTemplate(template=PROMPT_TEMPLATE, input_variables=["context", "question"])
         
-        try:
-            chain = prompt | self.llm
-            response = chain.invoke({"context": context_str, "question": user_question})
-        except Exception as e:
-            logger.exception(f"Gemini LLM invocation failed: {e}")
-            error_msg = str(e)
+        last_error = ""
+        for model_name in self.fallback_models:
+            try:
+                # Update model for this attempt
+                self.llm.model = model_name
+                logger.info(f"Attempting generation with model: {model_name}")
+                
+                chain = prompt | self.llm
+                response = chain.invoke({"context": context_str, "question": user_question})
+                output_text = response.content.strip()
+                
+                # If we got here, success!
+                break
+            except Exception as e:
+                last_error = str(e)
+                if "404" in last_error or "not found" in last_error.lower():
+                    logger.warning(f"Model {model_name} not found. Trying next fallback...")
+                    continue
+                else:
+                    # Non-404 error (Auth, Quota), log and return immediately
+                    logger.error(f"Gemini critical error ({model_name}): {last_error}")
+                    return {
+                        "answer": f"External Connectivity Error: Google Gemini is currently unreachable. Reason: {last_error}",
+                        "source_url": "N/A",
+                        "last_updated": "N/A",
+                        "is_refusal": True,
+                        "is_error": True
+                    }
+        else:
+            # All fallbacks failed
             return {
-                "answer": f"External Connectivity Error: Google Gemini is currently unreachable. Reason: {error_msg}",
+                "answer": f"External Connectivity Error: No supported Gemini models were found for your API key. (Last error: {last_error})",
                 "source_url": "N/A",
                 "last_updated": "N/A",
                 "is_refusal": True,
@@ -283,8 +312,6 @@ class RAGRetriever:
             }
         
         # Execute Phase 7 Post-Processing Constraint Validation
-        output_text = response.content.strip()
-        
         # If the LLM returns the explicit refusal string, we skip citations
         if "I do not have this factual information" in output_text:
             return {

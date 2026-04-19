@@ -10,7 +10,7 @@ python-dotenv
 # API Clients (Pure Python)
 pinecone
 cohere
-langchain-google-genai
+langchain-google-genai>=1.0.10
 langchain_core
 
 # Note: All local embedding and scrapping binary dependencies removed.
