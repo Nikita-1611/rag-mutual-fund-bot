@@ -106,11 +106,18 @@ class RAGRetriever:
             raise ValueError("Missing GOOGLE_API_KEY")
         
         # Initialize Gemini 1.5 Flash. Temp=0.0 is critical for determinism.
+        # Added BLOCK_NONE to prevent false-positive censorship of fund documentation.
         self.llm = ChatGoogleGenerativeAI(
             model="gemini-1.5-flash", 
             temperature=0.0, 
             google_api_key=google_api,
-            max_retries=2
+            max_retries=2,
+            safety_settings={
+                "HARM_CATEGORY_HARASSMENT": "BLOCK_NONE",
+                "HARM_CATEGORY_HATE_SPEECH": "BLOCK_NONE",
+                "HARM_CATEGORY_SEXUALLY_EXPLICIT": "BLOCK_NONE",
+                "HARM_CATEGORY_DANGEROUS_CONTENT": "BLOCK_NONE",
+            }
         )
         
         # 5. Initialize Phase 6 Guardrail Pre-Flight Security Engine (Keyword-based)
@@ -266,8 +273,9 @@ class RAGRetriever:
             response = chain.invoke({"context": context_str, "question": user_question})
         except Exception as e:
             logger.exception(f"Gemini LLM invocation failed: {e}")
+            error_msg = str(e)
             return {
-                "answer": "External Connectivity Error: The generation engine (Google Gemini) is currently unreachable.",
+                "answer": f"External Connectivity Error: Google Gemini is currently unreachable. Reason: {error_msg}",
                 "source_url": "N/A",
                 "last_updated": "N/A",
                 "is_refusal": True,

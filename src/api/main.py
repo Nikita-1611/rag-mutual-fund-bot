@@ -76,11 +76,19 @@ def health_check():
     except Exception as e:
         logger.error(f"Health check failed for Pinecone: {e}")
 
-    # Check Gemini Connectivity
-    gemini_ok = bool(os.environ.get("GOOGLE_API_KEY"))
+    # Check Gemini Connectivity (Live Probe)
+    gemini_ok = False
     g_latency = 0.0
-    if gemini_ok:
-        g_latency = 50.0 # Baseline network RTT objective 
+    try:
+        google_api = os.environ.get("GOOGLE_API_KEY")
+        if google_api and retriever:
+            g_start = time.perf_counter()
+            # Lightweight probe using a single token to verify auth and readiness
+            retriever.llm.invoke("ping")
+            g_latency = (time.perf_counter() - g_start) * 1000
+            gemini_ok = True
+    except Exception as e:
+        logger.error(f"Health check failed for Gemini: {e}")
         
     # 3. Check Cohere (Unified Embedding & Rerank Probe)
     cohere_ok = False
