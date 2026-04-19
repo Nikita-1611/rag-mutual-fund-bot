@@ -1,18 +1,18 @@
-# Bare Essentials for Render Production API
-# ----------------------------------------
+# Pure Python Requirements (No compilation, no Rust/C++)
+# ---------------------------------------------------
 
-# Web Server
+# Web Server (High quality wheels available for all platforms)
 fastapi
 uvicorn
 gunicorn
 python-dotenv
 
-# RAG & External APIs
+# API Clients (Pure Python)
 pinecone-client
 cohere
-langchain-groq
-langchain-core
+langchain_groq
+langchain_core
+huggingface_hub
 
-# Local Embeddings
-# Using flexible versioning to allow pip to resolve conflicts
-fastembed>=0.3.6
+# Note: All heavy local model libraries (torch, fastembed, onnx) 
+# have been replaced by API calls to ensure no compilation on Render.

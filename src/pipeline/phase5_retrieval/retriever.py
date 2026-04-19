@@ -3,7 +3,7 @@ import logging
 from typing import List, Dict, Any
 from dotenv import load_dotenv
 
-from fastembed import TextEmbedding
+from huggingface_hub import InferenceClient
 from pinecone import Pinecone
 import cohere
 from langchain_groq import ChatGroq
@@ -88,9 +88,11 @@ class RAGRetriever:
         self.pc = Pinecone(api_key=pc_api)
         self.index = self.pc.Index(INDEX_NAME)
 
-        # 2. Local Custom Embedder (Must match what we indexed in Phase 4)
-        logger.info("Loading fastembed bge-small-en-v1.5 model...")
-        self.embed_model = TextEmbedding(model_name="BAAI/bge-small-en-v1.5")
+        # 2. API-based Embedder (Replaces local heavy libraries for Render optimization)
+        # Must match what we indexed in Phase 4 (BAAI/bge-small-en-v1.5)
+        hf_token = os.environ.get("HF_TOKEN")
+        logger.info("Initializing HuggingFace Inference API client...")
+        self.hf_client = InferenceClient(api_key=hf_token)
 
         # 3. Initialize Cohere for Cross-Encoder Re-Ranking
         cohere_api = os.environ.get("COHERE_API_KEY")
@@ -159,10 +161,18 @@ class RAGRetriever:
                 "is_refusal": True
             }
             
-        # Step 1: Embed Query (Locally using FastEmbed)
-        logger.info("Embedding the query...")
-        # FastEmbed returns a generator, we take the first item
-        query_vector = list(self.embed_model.embed([standalone_question]))[0].tolist()
+        # Step 1: Embed Query (via HuggingFace Inference API - Pure Python)
+        logger.info("Embedding the query via API...")
+        query_vector = self.hf_client.feature_extraction(
+            text=standalone_question,
+            model="BAAI/bge-small-en-v1.5"
+        )
+        
+        # Ensure it's a standard list for Pinecone
+        if isinstance(query_vector, (list, tuple)) and isinstance(query_vector[0], list):
+             query_vector = query_vector[0] # Handle case where it might return nested list
+        elif hasattr(query_vector, "tolist"):
+             query_vector = query_vector.tolist()
         
         # Step 2: Hybrid/Dense Search on Pinecone
         logger.info("Fetching Top-15 semantic candidates from Pinecone...")
