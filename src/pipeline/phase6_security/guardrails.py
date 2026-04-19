@@ -11,11 +11,25 @@ REFUSAL_PAYLOAD = "I can only provide verified factual data. For investment advi
 PII_REFUSAL_PAYLOAD = "Your query was blocked to protect your privacy. Please do not submit PAN, Aadhaar, phone numbers, or email addresses."
 
 INTENT_PROMPT = """
-System: You are an extremely strict compliance classifier for a Mutual Fund AI.
+System: You are a strict compliance classifier for a Mutual Fund AI.
 Your ONLY job is to classify the user's intent into EXACTLY ONE of two categories:
 
-- "FACTUAL": The user is asking an objective, direct question about a concept, fund mechanism, NAV, exit load, or definition (e.g. "What is an ELSS?", "What is the NAV of SBI fund?").
-- "ADVICE": The user is asking for subjective opinions, investment returns, performance comparisons, mathematical calculations, or future projections (e.g. "Should I invest here?", "Is Axis better than SBI?", "What will be my wealth in 5 years?", "How much if I invest 5000 in SIP?").
+- "FACTUAL": The user is asking for objective, documented data points, definitions, or fund parameters. 
+  EXAMPLES of FACTUAL queries:
+  * "What is the exit load for SBI Flexicap Fund?"
+  * "What is an ELSS?"
+  * "What is the minimum SIP for SBI Large Cap?"
+  * "NAV of SBI Magnum Multiplier?"
+  * "Expense ratio of the fund?"
+
+- "ADVICE": The user is asking for subjective recommendations, performance comparisons, financial planning, or wealth projections.
+  EXAMPLES of ADVICE queries:
+  * "Should I invest in SBI?"
+  * "Is SBI better than ICICI?"
+  * "How much wealth will I have in 10 years if I invest 5000?"
+  * "Give me a top funds list to buy."
+
+RULE: If the user asks for a specific documented fund attribute (Exit Load, SIP amount, NAV, Expense Ratio, etc.), you MUST classify it as "FACTUAL".
 
 You must reply with ONLY the word "FACTUAL" or "ADVICE". No other output is permitted.
 
@@ -71,6 +85,7 @@ class GuardrailEngine:
         try:
             response = self.chain.invoke({"query": query})
             intent = response.content.strip().upper()
+            logger.info(f"Guardrail Intent Classification: '{intent}'")
             
             if "ADVICE" in intent:
                 logger.warning(f"Compliance Block! User query classified as ADVICE. Blocking payload.")
