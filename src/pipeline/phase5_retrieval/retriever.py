@@ -105,18 +105,19 @@ class RAGRetriever:
             logger.error("GOOGLE_API_KEY environment variable not set.")
             raise ValueError("Missing GOOGLE_API_KEY")
         
-        # Robust LLM Initialization
-        # We store the config, but we will handle the actual model selection dynamically 
-        # to handle 404 'Not Found' errors for specific model versions.
+        # Robust LLM Initialization (v1 REST Stack)
+        # Forcing v1 version and rest transport to bypass v1beta 404 errors on Render.
         self.google_api_key = google_api
-        self.fallback_models = ["gemini-1.5-flash-latest", "gemini-1.5-flash", "gemini-1.5-pro", "gemini-pro"]
+        self.fallback_models = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"]
         
-        # Initialize primary LLM
+        # Initialize primary LLM with stable production settings
         self.llm = ChatGoogleGenerativeAI(
             model=self.fallback_models[0], 
             temperature=0.0, 
             google_api_key=self.google_api_key,
             max_retries=2,
+            version="v1",
+            transport="rest",
             safety_settings={
                 "HARM_CATEGORY_HARASSMENT": "BLOCK_NONE",
                 "HARM_CATEGORY_HATE_SPEECH": "BLOCK_NONE",
