@@ -8,7 +8,7 @@ gunicorn
 python-dotenv
 
 # API Clients (Pure Python)
-pinecone-client
+pinecone
 cohere
 langchain_groq
 langchain_core
