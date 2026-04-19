@@ -1,24 +1,18 @@
-# Production requirements for Render (Optimized for 512MB RAM)
-# -----------------------------------------------------------
+# Bare Essentials for Render Production API
+# ----------------------------------------
 
-# Core API and Server
-fastapi==0.110.0
-uvicorn==0.28.0
-gunicorn==21.2.0
-httpx==0.27.0
-python-dotenv==1.0.1
-tenacity==8.2.3
+# Web Server
+fastapi
+uvicorn
+gunicorn
+python-dotenv
 
-# RAG and Vector DB
-pinecone-client==3.2.2
-langchain==0.1.13
-langchain-groq==0.1.0
-cohere==5.1.0
+# RAG & External APIs
+pinecone-client
+cohere
+langchain-groq
+langchain-core
 
-# Lightweight Embedding (Replaces sentence-transformers/torch)
-# Uses ONNX runtime which is significantly more memory efficient
+# Local Embeddings
+# Using flexible versioning to allow pip to resolve conflicts
 fastembed>=0.3.6
-
-# Note: heavy evaluation (ragas, datasets) and ingestion (scraping) 
-# libraries have been removed to stay under 512MB RAM.
-# local streamlit UI also removed from production.
