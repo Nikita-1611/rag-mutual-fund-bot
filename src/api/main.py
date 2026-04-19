@@ -21,6 +21,8 @@ logger = logging.getLogger(__name__)
 
 from fastapi.middleware.cors import CORSMiddleware
 
+# Mutual Fund FAQ Assistant - Application Entry Point
+# Deployment Trigger: Gemini Migration Finalized objective 
 app = FastAPI(title="Mutual Fund FAQ Assistant API", version="1.0.0")
 
 # Add CORS Middleware for Next.js Frontend
