@@ -17,7 +17,7 @@ cohere==5.1.0
 
 # Lightweight Embedding (Replaces sentence-transformers/torch)
 # Uses ONNX runtime which is significantly more memory efficient
-fastembed==0.2.7
+fastembed>=0.3.6
 
 # Note: heavy evaluation (ragas, datasets) and ingestion (scraping) 
 # libraries have been removed to stay under 512MB RAM.
