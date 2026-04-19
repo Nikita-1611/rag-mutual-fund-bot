@@ -275,7 +275,13 @@ class RAGRetriever:
             }
             
         # Execute Phase 7 Post-Processing Constraint Validation
-        output_text = response.content.strip()
+        raw_text = response.content.strip()
+        
+        # Hard Truncation: Ensure the answer is 3 sentences or less
+        # We use a non-greedy regex to split by common sentence terminators (., !, ?)
+        import re
+        sentences = re.split(r'(?<=[.!?])\s+', raw_text)
+        output_text = " ".join(sentences[:3])
         
         # If the LLM returns the explicit refusal string, we skip citations
         if "I do not have this factual information" in output_text:

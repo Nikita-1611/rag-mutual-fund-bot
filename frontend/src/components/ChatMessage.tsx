@@ -55,7 +55,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, isLast }) => {
                   {sourceUrl}
                   <ExternalLink size={10} className="shrink-0" />
                 </a>
-                <span className="text-[9px] text-slate-400 font-bold mt-1 uppercase">Checked on {lastUpdated || 'recent sources'}</span>
+                <span className="text-[9px] text-slate-400 font-bold mt-1 uppercase">Last updated from sources: {lastUpdated || 'recent'}</span>
               </div>
             </div>
           )}
