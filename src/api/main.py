@@ -81,18 +81,28 @@ def health_check():
     if groq_ok:
         g_latency = 50.0 # Standard network RTT baseline for ping
         
-    cohere_ok = bool(os.environ.get("COHERE_API_KEY"))
-    if cohere_ok:
-        c_latency = 80.0 # Standard network RTT baseline
-    
+    # 4. Check HuggingFace (Trial Embedding)
+    hf_ok = False
+    hf_time = 0.0
+    try:
+        if retriever and hasattr(retriever, 'hf_client'):
+            h_start = time.perf_counter()
+            retriever.hf_client.feature_extraction(text="ping", model="BAAI/bge-small-en-v1.5")
+            hf_time = (time.perf_counter() - h_start) * 1000
+            hf_ok = True
+    except Exception as e:
+        logger.error(f"Health check failed for HuggingFace: {e}")
+
     return HealthResponse(
-        status="healthy" if pinecone_ok and groq_ok and cohere_ok else "degraded",
+        status="healthy" if (pinecone_ok and groq_ok and cohere_ok and hf_ok) else "degraded",
         pinecone_connected=pinecone_ok,
         groq_connected=groq_ok,
         cohere_connected=cohere_ok,
+        hf_connected=hf_ok,
         pinecone_latency_ms=p_latency,
         groq_latency_ms=g_latency,
-        cohere_latency_ms=c_latency
+        cohere_latency_ms=c_latency,
+        hf_latency_ms=hf_time
     )
 
 @app.post("/api/v1/session/init", response_model=SessionInitResponse)

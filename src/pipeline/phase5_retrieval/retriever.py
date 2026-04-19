@@ -163,26 +163,49 @@ class RAGRetriever:
             
         # Step 1: Embed Query (via HuggingFace Inference API - Pure Python)
         logger.info("Embedding the query via API...")
-        query_vector = self.hf_client.feature_extraction(
-            text=standalone_question,
-            model="BAAI/bge-small-en-v1.5"
-        )
-        
-        # Ensure it's a standard list for Pinecone
-        if isinstance(query_vector, (list, tuple)) and isinstance(query_vector[0], list):
-             query_vector = query_vector[0] # Handle case where it might return nested list
-        elif hasattr(query_vector, "tolist"):
-             query_vector = query_vector.tolist()
+        try:
+            query_vector = self.hf_client.feature_extraction(
+                text=standalone_question,
+                model="BAAI/bge-small-en-v1.5"
+            )
+            
+            # Ensure it's a standard list for Pinecone
+            if isinstance(query_vector, (list, tuple)) and len(query_vector) > 0 and isinstance(query_vector[0], list):
+                 query_vector = query_vector[0] 
+            elif hasattr(query_vector, "tolist"):
+                 query_vector = query_vector.tolist()
+                 
+            if not query_vector:
+                raise ValueError("HuggingFace returned an empty embedding vector.")
+                
+        except Exception as e:
+            logger.exception(f"HuggingFace Embedding API failed: {e}")
+            return {
+                "answer": "External Connectivity Error: The embedding service (HuggingFace) is currently unavailable or unauthorized. Please check your HF_TOKEN.",
+                "source_url": "N/A",
+                "last_updated": "N/A",
+                "is_refusal": True,
+                "is_error": True
+            }
         
         # Step 2: Hybrid/Dense Search on Pinecone
         logger.info("Fetching Top-15 semantic candidates from Pinecone...")
-        search_results = self.index.query(
-            vector=query_vector,
-            top_k=15,
-            include_metadata=True
-        )
-        
-        matches = search_results.get("matches", [])
+        try:
+            search_results = self.index.query(
+                vector=query_vector,
+                top_k=15,
+                include_metadata=True
+            )
+            matches = search_results.get("matches", [])
+        except Exception as e:
+            logger.exception(f"Pinecone query failed: {e}")
+            return {
+                "answer": "External Connectivity Error: The vector database (Pinecone) is currently unreachable.",
+                "source_url": "N/A",
+                "last_updated": "N/A",
+                "is_refusal": True,
+                "is_error": True
+            }
         
         # Phase 11 Mitigation: Similarity Thresholding
         # Reject chunks if the top match score is below 0.70 
@@ -209,14 +232,18 @@ class RAGRetriever:
                 "last_updated": "N/A"
             }
 
-        reranked = self.co_client.rerank(
-            model='rerank-english-v3.0',
-            query=standalone_question,
-            documents=documents,
-            top_n=3
-        )
-
-        top_3_indices = [result.index for result in reranked.results]
+        try:
+            reranked = self.co_client.rerank(
+                model='rerank-english-v3.0',
+                query=standalone_question,
+                documents=documents,
+                top_n=3
+            )
+            top_3_indices = [result.index for result in reranked.results]
+        except Exception as e:
+            logger.exception(f"Cohere rerank failed: {e}")
+            # Fallback to top-3 from Pinecone if Cohere fails, rather than crashing
+            top_3_indices = [0, 1, 2][:len(documents)]
         
         # Build strict context string
         context_chunks = []
@@ -231,10 +258,18 @@ class RAGRetriever:
         logger.info("Passing top 3 re-ranked contexts to LLM constraint generator...")
         prompt = PromptTemplate(template=PROMPT_TEMPLATE, input_variables=["context", "question"])
         
-        chain = prompt | self.llm
-        # Note: We pass the ORIGINAL user_question to the generator so it feels natural, 
-        # but the contexts were retrieved using the standalone_question.
-        response = chain.invoke({"context": context_str, "question": user_question})
+        try:
+            chain = prompt | self.llm
+            response = chain.invoke({"context": context_str, "question": user_question})
+        except Exception as e:
+            logger.exception(f"Groq LLM invocation failed: {e}")
+            return {
+                "answer": "External Connectivity Error: The generation engine (Groq) is currently unreachable.",
+                "source_url": "N/A",
+                "last_updated": "N/A",
+                "is_refusal": True,
+                "is_error": True
+            }
         
         # Execute Phase 7 Post-Processing Constraint Validation
         output_text = response.content.strip()
