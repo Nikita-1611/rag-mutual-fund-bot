@@ -1,3 +1,4 @@
+// Deployment Trigger: 2026-04-19T08:38:00
 import axios from 'axios';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
