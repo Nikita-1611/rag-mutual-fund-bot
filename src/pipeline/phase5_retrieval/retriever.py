@@ -106,9 +106,9 @@ class RAGRetriever:
             logger.error("GROQ_API_KEY environment variable not set.")
             raise ValueError("Missing GROQ_API_KEY")
             
-        # Initialize Groq Llama-3.1 Model. Temp=0.0 is critical for determinism.
+        # Initialize Groq Llama-3.3 Model. Temp=0.0 is critical for determinism.
         self.llm = ChatGroq(
-            model_name="llama-3.1-70b-versatile", 
+            model_name="llama-3.3-70b-versatile", 
             temperature=0.0, 
             groq_api_key=groq_api
         )
