@@ -19,3 +19,4 @@ langchain_core
 # Scraping
 beautifulsoup4
 lxml
+html2text
