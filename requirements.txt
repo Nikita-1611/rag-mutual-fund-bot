@@ -16,3 +16,6 @@ langchain_core
 # Note: All local embedding and scrapping binary dependencies removed.
 # System now uses a unified Cohere stack for both Embeddings and Reranking.
 # LLM Generation powered by Groq Llama-3.
+# Scraping
+beautifulsoup4
+lxml
