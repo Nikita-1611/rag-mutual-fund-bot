@@ -85,3 +85,10 @@ python src/pipeline/phase10_evaluation/evaluate.py
 
 ---
 *Created as part of the Mutual Fund FAQ Assistant RAG Project.*
+
+# Demo
+
+
+https://github.com/user-attachments/assets/fa5031ee-7822-4b19-a687-955fddb763b7
+
+
